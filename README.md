@@ -11,6 +11,9 @@ back in control. See screenshot png files to see what this looks like.
 - The favicon never has the red badge. If you want to check if someone sent you
   a message, go look at slack! There are times when that's suboptimal, but not
   worth the digital overload.
+  
+  ![Image of debadged icon](https://github.com/ojanvafai-at/slack-zen/blob/master/debadged-favicon.png)
+
 - Adds a "Toggle sidebar" button that...toggles the sidebar visibility. With the
   sidebar hidden, you can't see any information about unread messages, channels,
   etc. You can still start new messages with the compose icon or go to an
@@ -24,4 +27,3 @@ back in control. See screenshot png files to see what this looks like.
 
 ![Image of hidden sidebar](https://github.com/ojanvafai-at/slack-zen/blob/master/hidden-sidebar.png)
 ![Image of visible sidebar](https://github.com/ojanvafai-at/slack-zen/blob/master/visible-sidebar.png)
-![Image of debadged icon](https://github.com/ojanvafai-at/slack-zen/blob/master/debadged-favicon.png)
