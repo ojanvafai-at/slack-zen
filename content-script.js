@@ -8,6 +8,7 @@ function show(shouldShow) {
     classList.add(className);
   }
 }
+show(false);
 
 function toggle() {
   show(document.documentElement.classList.contains(className));
