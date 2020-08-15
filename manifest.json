@@ -1,0 +1,18 @@
+{
+  "name": "Slack additions",
+  "version": "1.0",
+  "description": "Ojan's tweaks to slack to reduce anxiety",
+  "permissions": ["tabs"],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://app.slack.com/*"],
+      "run_at": "document_end",
+      "js": ["content-script.js"],
+      "css": ["content-script.css"]
+    }
+  ],
+  "manifest_version": 2
+}

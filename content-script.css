@@ -1,0 +1,17 @@
+.hide-sidebar nav {
+  visibility: hidden;
+}
+
+.hide-sidebar-toggle-button {
+  color: var(--sk_primary_foreground);
+  display: flex;
+  align-items: center;
+  height: 26px;
+  margin-left: 16px;
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.hide-sidebar-toggle-button:hover {
+  background: rgba(var(--sk_foreground_min, 29, 28, 29), 0.08);
+}
