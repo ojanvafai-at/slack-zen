@@ -1,5 +1,5 @@
 {
-  "name": "Slack additions",
+  "name": "Slack Zen",
   "version": "1.0",
   "description": "Ojan's tweaks to slack to reduce anxiety",
   "content_scripts": [
