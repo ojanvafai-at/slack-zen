@@ -82,13 +82,6 @@ function containsSelector(element, selector) {
   return !!element.querySelector(selector);
 }
 
-function isSectionCollapsed(section) {
-  return containsSelector(
-    section,
-    ".p-channel_sidebar__section_heading--collapsed"
-  );
-}
-
 function hasPlusButton(section) {
   return containsSelector(section, ".p-channel_sidebar__section_heading_plus");
 }
