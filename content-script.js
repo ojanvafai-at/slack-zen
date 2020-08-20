@@ -1,10 +1,11 @@
 const className = "hide-sidebar";
+const hideSidebarButtonNameClassName = "hide-sidebar-button-name";
 // Don't hide the sidebar immediately on blur if the user goes away and comes
 // back quickly.
 const hideDelayMs = 1000 * 60 * 15;
 let delayTimeout;
 let windowFocused;
-let showEmptySections = false;
+let channelSidebarMutationObserver;
 
 function show(shouldShow) {
   const classList = document.documentElement.classList;
@@ -31,11 +32,6 @@ function toggleSidebar() {
   show(document.documentElement.classList.contains(className));
 }
 
-function toggleShowEmptySections() {
-  showEmptySections = !showEmptySections;
-  updateEmptySectionDisplay();
-}
-
 function favicon() {
   return document.querySelector('link[rel*="icon"]');
 }
@@ -56,7 +52,11 @@ function isFavicon(node) {
 }
 
 function isChannelSidebarSection(element) {
-  return element.id.startsWith("sectionHeading-");
+  return element.getAttribute("aria-level") === "1";
+}
+
+function channelName(section) {
+  return section.querySelector(".p-channel_sidebar__name");
 }
 
 window.addEventListener("visibilitychange", hideAfterDelayIfStillVisible);
@@ -66,24 +66,29 @@ window.addEventListener("blur", () => {
 });
 window.addEventListener("focus", () => (windowFocused = true));
 
-function observe(getObserved, callback) {
+function observe(getObserved, callback, opt_onInit) {
   if (!getObserved()) {
     setTimeout(() => observe(getObserved, callback), 1000);
     return;
   }
   const observer = new MutationObserver(callback);
-  observer.observe(getObserved().parentNode, {
+  observeParent(observer, getObserved());
+  if (opt_onInit) {
+    opt_onInit();
+  }
+  return observer;
+}
+
+function observeParent(observer, item) {
+  observer.observe(item.parentNode, {
     childList: true,
     subtree: true,
+    attributes: true,
   });
 }
 
 function containsSelector(element, selector) {
   return !!element.querySelector(selector);
-}
-
-function hasPlusButton(section) {
-  return containsSelector(section, ".p-channel_sidebar__section_heading_plus");
 }
 
 function labelElement(section) {
@@ -92,40 +97,72 @@ function labelElement(section) {
   );
 }
 
+function isRead(item) {
+  return (
+    !item.querySelector(".p-channel_sidebar__link--unread") &&
+    !item.querySelector(".p-channel_sidebar__channel--unread")
+  );
+}
+
 function hasSectionName(section, name) {
   const sectionLabel = labelElement(section);
   return sectionLabel && sectionLabel.textContent === name;
 }
 
-function updateEmptySectionDisplay() {
-  const sidebarItems = channelSidebarList().children;
-  for (let i = 0; i < sidebarItems.length; i++) {
-    const item = sidebarItems[i];
-    if (!isChannelSidebarSection(item)) {
-      continue;
-    }
-    // The next sibling after a section with no unreads is area metadata, and
-    // the one after that is either a channel or a section. If it's a section
-    // then this section is empty.
-    let shouldHide;
-    if (showEmptySections || hasPlusButton(item)) {
-      shouldHide = false;
-    } else if (hasSectionName(item, "Hidden")) {
-      shouldHide = true;
-    } else {
-      shouldHide =
-        i >= sidebarItems.length - 2 ||
-        isChannelSidebarSection(sidebarItems[i + 2]);
-    }
-    const sectionLabel = labelElement(item);
-    if (sectionLabel) {
-      sectionLabel.style.visibility = shouldHide ? "hidden" : "";
-    }
+function setVisibility(element, shouldShow) {
+  if (shouldShow) {
+    element.classList.remove(hideSidebarButtonNameClassName);
+  } else {
+    element.classList.add(hideSidebarButtonNameClassName);
   }
 }
 
+function updateEmptySectionDisplay() {
+  // Disconnect since this functin will modify the subtree when changing visibility.
+  channelSidebarMutationObserver.disconnect();
+  const sidebarItems = channelSidebarList().children;
+  for (let i = 0; i < sidebarItems.length; i++) {
+    const item = sidebarItems[i];
+
+    let shouldHide;
+    let itemLabel = channelName(item);
+    if (itemLabel) {
+      shouldHide = isRead(item);
+    } else {
+      if (!isChannelSidebarSection(item)) {
+        continue;
+      }
+      itemLabel = labelElement(item);
+      // The next sibling after a section with no unreads is area metadata, and
+      // the one after that is either a channel or a section. If it's a section
+      // then this section is empty.
+      shouldHide =
+        hasSectionName(item, "Hidden") ||
+        i >= sidebarItems.length - 2 ||
+        isChannelSidebarSection(sidebarItems[i + 2]);
+    }
+    setVisibility(itemLabel, !shouldHide);
+  }
+  // Reconnect to observe future changes.
+  observeParent(channelSidebarMutationObserver, channelSidebarList());
+}
+
+function wrapMoreButtonName() {
+  const moreButton = document
+    .getElementById("morePages")
+    .querySelector("button");
+  const container = document.createElement("span");
+  container.append(moreButton.lastChild);
+  moreButton.append(container);
+  setVisibility(container, false);
+}
+
 function observeChanngelSidebarListChanges() {
-  observe(channelSidebarList, (mutations) => updateEmptySectionDisplay());
+  channelSidebarMutationObserver = observe(
+    channelSidebarList,
+    (mutations) => updateEmptySectionDisplay(),
+    wrapMoreButtonName
+  );
   updateEmptySectionDisplay();
 }
 
@@ -152,8 +189,5 @@ window.addEventListener("load", () => {
 
   document
     .querySelector(".p-top_nav__sidebar")
-    .before(
-      createButton("Toggle sidebar", toggleSidebar),
-      createButton("Toggle show empty sections", toggleShowEmptySections)
-    );
+    .before(createButton("Toggle sidebar", toggleSidebar));
 });

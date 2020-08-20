@@ -15,3 +15,11 @@
 .hide-sidebar-toggle-button:hover {
   background: rgba(var(--sk_foreground_min, 29, 28, 29), 0.08);
 }
+
+.hide-sidebar-button-name {
+  opacity: 0 !important;
+}
+
+.p-channel_sidebar__static_list__item:hover .hide-sidebar-button-name {
+  opacity: 1 !important;
+}
