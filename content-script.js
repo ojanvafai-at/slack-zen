@@ -1,5 +1,5 @@
 const className = "hide-sidebar";
-const hideSidebarButtonNameClassName = "hide-sidebar-button-name";
+const hideSidebarButtonNameClassName = "hide-sidebar-item";
 // Don't hide the sidebar immediately on blur if the user goes away and comes
 // back quickly.
 const hideDelayMs = 1000 * 60 * 15;
@@ -7,7 +7,12 @@ let delayTimeout;
 let windowFocused;
 let channelSidebarMutationObserver;
 
+const toggleButton = document.createElement("button");
+toggleButton.classList.add("hide-sidebar-toggle-button");
+toggleButton.addEventListener("click", toggleSidebar);
+
 function show(shouldShow) {
+  toggleButton.textContent = shouldShow ? "Let me focus" : "Distract me";
   const classList = document.documentElement.classList;
   if (shouldShow) {
     classList.remove(className);
@@ -29,7 +34,8 @@ function hideAfterDelayIfStillVisible() {
 }
 
 function toggleSidebar() {
-  show(document.documentElement.classList.contains(className));
+  const shouldShow = document.documentElement.classList.contains(className);
+  show(shouldShow);
 }
 
 function favicon() {
@@ -100,7 +106,8 @@ function labelElement(section) {
 function isRead(item) {
   return (
     !item.querySelector(".p-channel_sidebar__link--unread") &&
-    !item.querySelector(".p-channel_sidebar__channel--unread")
+    !item.querySelector(".p-channel_sidebar__channel--unread") &&
+    !item.querySelector(".p-channel_sidebar__section_heading--unreads")
   );
 }
 
@@ -121,48 +128,18 @@ function updateEmptySectionDisplay() {
   // Disconnect since this functin will modify the subtree when changing visibility.
   channelSidebarMutationObserver.disconnect();
   const sidebarItems = channelSidebarList().children;
-  for (let i = 0; i < sidebarItems.length; i++) {
-    const item = sidebarItems[i];
-
-    let shouldHide;
-    let itemLabel = channelName(item);
-    if (itemLabel) {
-      shouldHide = isRead(item);
-    } else {
-      if (!isChannelSidebarSection(item)) {
-        continue;
-      }
-      itemLabel = labelElement(item);
-      // The next sibling after a section with no unreads is area metadata, and
-      // the one after that is either a channel or a section. If it's a section
-      // then this section is empty.
-      shouldHide =
-        hasSectionName(item, "Hidden") ||
-        i >= sidebarItems.length - 2 ||
-        isChannelSidebarSection(sidebarItems[i + 2]);
-    }
-    setVisibility(itemLabel, !shouldHide);
+  for (let item of sidebarItems) {
+    let shouldHide = hasSectionName(item, "Hidden") || isRead(item);
+    setVisibility(item, !shouldHide);
   }
   // Reconnect to observe future changes.
   observeParent(channelSidebarMutationObserver, channelSidebarList());
 }
 
-function wrapMoreButtonName() {
-  const moreButton = document
-    .getElementById("morePages")
-    .querySelector("button");
-  const container = document.createElement("span");
-  container.append(moreButton.lastChild);
-  moreButton.append(container);
-  setVisibility(container, false);
-}
-
 function observeChanngelSidebarListChanges() {
-  channelSidebarMutationObserver = observe(
-    channelSidebarList,
-    (mutations) => updateEmptySectionDisplay(),
-    wrapMoreButtonName
-  );
+  channelSidebarMutationObserver = observe(channelSidebarList, (mutations) => {
+    updateEmptySectionDisplay();
+  });
   updateEmptySectionDisplay();
 }
 
@@ -175,19 +152,8 @@ function observeFaviconChanges() {
   debadgeFavicon();
 }
 
-function createButton(text, callback) {
-  let button = document.createElement("button");
-  button.classList.add("hide-sidebar-toggle-button");
-  button.textContent = text;
-  button.addEventListener("click", callback);
-  return button;
-}
-
 window.addEventListener("load", () => {
   observeFaviconChanges();
   observeChanngelSidebarListChanges();
-
-  document
-    .querySelector(".p-top_nav__sidebar")
-    .before(createButton("Toggle sidebar", toggleSidebar));
+  document.querySelector(".p-top_nav__sidebar").before(toggleButton);
 });
