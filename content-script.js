@@ -22,6 +22,9 @@ function show(shouldShow) {
 }
 show(false);
 
+// c-message_list__unread_divider
+// p-ia__view_header__title
+
 function hideAfterDelayIfStillVisible() {
   if (delayTimeout) {
     clearTimeout(delayTimeout);
@@ -72,10 +75,13 @@ window.addEventListener("blur", () => {
 });
 window.addEventListener("focus", () => (windowFocused = true));
 
-function observe(getObserved, callback, opt_onInit) {
-  if (!getObserved()) {
-    setTimeout(() => observe(getObserved, callback), 1000);
-    return;
+function timeout(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function observe(getObserved, callback, opt_onInit) {
+  while (!getObserved()) {
+    await timeout(1000);
   }
   const observer = new MutationObserver(callback);
   observeParent(observer, getObserved());
@@ -136,15 +142,18 @@ function updateEmptySectionDisplay() {
   observeParent(channelSidebarMutationObserver, channelSidebarList());
 }
 
-function observeChanngelSidebarListChanges() {
-  channelSidebarMutationObserver = observe(channelSidebarList, (mutations) => {
-    updateEmptySectionDisplay();
-  });
+async function observeChannelSidebarListChanges() {
+  channelSidebarMutationObserver = await observe(
+    channelSidebarList,
+    (mutations) => {
+      updateEmptySectionDisplay();
+    }
+  );
   updateEmptySectionDisplay();
 }
 
-function observeFaviconChanges() {
-  observe(favicon, (mutations) => {
+async function observeFaviconChanges() {
+  await observe(favicon, (mutations) => {
     if (mutations.some((x) => [...x.removedNodes].some((y) => isFavicon(y)))) {
       debadgeFavicon();
     }
@@ -154,6 +163,6 @@ function observeFaviconChanges() {
 
 window.addEventListener("load", () => {
   observeFaviconChanges();
-  observeChanngelSidebarListChanges();
+  observeChannelSidebarListChanges();
   document.querySelector(".p-top_nav__sidebar").before(toggleButton);
 });
