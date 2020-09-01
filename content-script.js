@@ -1,5 +1,6 @@
 const className = "hide-sidebar";
 const hideSidebarButtonNameClassName = "hide-sidebar-item";
+const alwaysBlurClassName = "always-blur";
 // Don't hide the sidebar immediately on blur if the user goes away and comes
 // back quickly.
 const hideDelayMs = 1000 * 60 * 15;
@@ -11,7 +12,11 @@ const toggleButton = document.createElement("button");
 toggleButton.classList.add("hide-sidebar-toggle-button");
 toggleButton.addEventListener("click", toggleSidebar);
 
+let isFocusMode = true;
+
 function show(shouldShow) {
+  isFocusMode = !shouldShow;
+
   toggleButton.textContent = shouldShow ? "Let me focus" : "Distract me";
   const classList = document.documentElement.classList;
   if (shouldShow) {
@@ -112,6 +117,12 @@ function hasSectionName(section, name) {
 }
 
 function setVisibility(element, shouldShow) {
+  if (isFocusMode) {
+    element.classList.remove(alwaysBlurClassName);
+  } else {
+    element.classList.add(alwaysBlurClassName);
+  }
+
   if (shouldShow) {
     element.classList.remove(hideSidebarButtonNameClassName);
   } else {
@@ -124,8 +135,13 @@ function updateEmptySectionDisplay() {
   channelSidebarMutationObserver.disconnect();
   const sidebarItems = channelSidebarList().children;
   for (let item of sidebarItems) {
+    item.classList.add(hideSidebarButtonNameClassName);
     let shouldHide = hasSectionName(item, "Hidden") || isRead(item);
-    setVisibility(item, !shouldHide);
+    if (shouldHide) {
+      item.classList.add(alwaysBlurClassName);
+    } else {
+      item.classList.remove(alwaysBlurClassName);
+    }
   }
   // Reconnect to observe future changes.
   observeParent(channelSidebarMutationObserver, channelSidebarList());
@@ -229,7 +245,7 @@ function handleThreadsViewChanges() {
   if (threadsViewChangeDebounceId) {
     clearTimeout(threadsViewChangeDebounceId);
   }
-  threadsViewChangeDebounceId = setTimeout(updateThreadsViewItemDisplay, 0);
+  threadsViewChangeDebounceId = setTimeout(updateThreadsViewItemDisplay, 100);
 }
 
 async function handleNewViewHeaderTitle(title) {
@@ -258,9 +274,16 @@ async function observeViewHeaderTitleChanges() {
   handleNewViewHeaderTitle(getViewHeaderTitle().textContent);
 }
 
-window.addEventListener("load", () => {
+function getTopNavSidebar() {
+  return document.querySelector(".p-top_nav__sidebar");
+}
+
+window.addEventListener("load", async () => {
   observeFaviconChanges();
   observeChannelSidebarListChanges();
   observeViewHeaderTitleChanges();
-  document.querySelector(".p-top_nav__sidebar").before(toggleButton);
+  while (!getTopNavSidebar()) {
+    await timeout(1000);
+  }
+  getTopNavSidebar().before(toggleButton);
 });

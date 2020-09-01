@@ -1,13 +1,11 @@
-.hide-sidebar nav {
-  visibility: hidden;
-}
-
 .hide-sidebar-toggle-button {
   color: var(--sk_primary_foreground);
   display: flex;
   align-items: center;
+  justify-content: center;
   height: 26px;
-  margin-left: 16px;
+  width: 90px;
+  margin-left: 8px;
   border-radius: 4px;
   padding: 0 4px;
 }
@@ -16,11 +14,20 @@
   background: rgba(var(--sk_foreground_min, 29, 28, 29), 0.08);
 }
 
-.hide-sidebar-item > * {
-  filter: blur(5px);
+.hide-sidebar-item.always-blur > *,
+.hide-sidebar .hide-sidebar-item > * {
+  filter: blur(5px) grayscale(100%);
 }
 
-.hide-thread-item > * {
+.hide-sidebar-item * {
+  font-weight: normal;
+}
+
+.hide-sidebar-item:hover * {
+  font-weight: auto;
+}
+
+.hide-sidebar .hide-thread-item > * {
   filter: blur(9px);
 }
 
