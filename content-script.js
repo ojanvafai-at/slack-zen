@@ -22,9 +22,6 @@ function show(shouldShow) {
 }
 show(false);
 
-// c-message_list__unread_divider
-// p-ia__view_header__title
-
 function hideAfterDelayIfStillVisible() {
   if (delayTimeout) {
     clearTimeout(delayTimeout);
@@ -41,10 +38,6 @@ function toggleSidebar() {
   show(shouldShow);
 }
 
-function favicon() {
-  return document.querySelector('link[rel*="icon"]');
-}
-
 function channelSidebarList() {
   return document.querySelector(
     ".p-channel_sidebar__list .c-virtual_list__scroll_container"
@@ -54,10 +47,6 @@ function channelSidebarList() {
 function debadgeFavicon() {
   favicon().href =
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAABNVBMVEVKFEz///9NGE+EX4VLFU3w7PD9/f1SH1Tb0Nv59/n18/W4orhZKFt2TnhwRXF2TXdpPGqghKFMFk7FtMZTIFVhMmNxR3PHt8hfL2F6U3xpPWt/WYD+/v5nOWhWI1edgJ7z8POBW4LIuMhySHS6pruHZIl/WoGJZopuQ3CObI/Vydba0NtsQW7ArcHw6/DEs8VYJlqojqnx7fH8/PyfgqDGtcbg1+Du6e7e1N5kN2Z8VX2fg6BbKlxOGVBxRnJ4T3ljNWV6UnuDXoSLaIyih6NMF07az9qWd5f8+/zUx9Ts5+zj2+Pv6u/t5+13Tni1n7WYeZlTH1XYzdn49vjLu8uIZYm5pLpmOGipkKqMaY2UdJXr5euZe5prP2xsQG2JZovTxtSnjahOGlDSxdOQcJKHY4hXJVnkajHYAAABJUlEQVR4Xr3PNXbFMBCF4Tvmx8wYZmZmZmaG/S8hHke2UuikfF9xp9DfCC3V4YQzUeB01umDStYkogKS5EpCIUGukLHOZwMKRYsLrYv3EyqTljqQcm26DmWQXen2HNsIgrNEUf7PJGGm1w/yJlkLEBwK9PvBgLtWTgRhGQxD53OHCT5rIpiSwRCe+QyCt1kXQbQQIk9oZBQYGz9sAETV6RgChuaBpGlpSHPzlcoilpZLqwDikXZPZtOG0CCXvrXt7g7iu+TbM0Sw7wUx3gNESCqL4IiDfA9vGCck1USQIqLztAjKF+S7hO/qOmVDBLi57fRE7jX8FQRqMugienj8P3A9QeGLg+bveYFCjYNXxPiUoPJWJTOOd4foQ4OSHeUH47uO1voBEO4eo1Zt+vMAAAAASUVORK5CYII=";
-}
-
-function isFavicon(node) {
-  return node.tagName === "LINK" && node.getAttribute("rel").includes("icon");
 }
 
 function isChannelSidebarSection(element) {
@@ -152,6 +141,14 @@ async function observeChannelSidebarListChanges() {
   updateEmptySectionDisplay();
 }
 
+function favicon() {
+  return document.querySelector('link[rel*="icon"]');
+}
+
+function isFavicon(node) {
+  return node.tagName === "LINK" && node.getAttribute("rel").includes("icon");
+}
+
 async function observeFaviconChanges() {
   await observe(favicon, (mutations) => {
     if (mutations.some((x) => [...x.removedNodes].some((y) => isFavicon(y)))) {
@@ -161,8 +158,109 @@ async function observeFaviconChanges() {
   debadgeFavicon();
 }
 
+let savedViewHeaderTitle;
+let threadsViewObserver;
+
+function getThreadsView() {
+  return document.querySelector("#threads_view");
+}
+
+function getViewHeaderTitle() {
+  return document.querySelector(".p-ia__view_header");
+}
+
+const hideThisAndFollowingClassName = "hide-thread-item";
+function showSidebarItem(item, shouldShow) {
+  if (shouldShow) {
+    item.classList.remove(hideThisAndFollowingClassName);
+  } else {
+    item.classList.add(hideThisAndFollowingClassName);
+  }
+}
+
+function updateThreadsViewItemDisplay() {
+  const threads = getThreadsView().querySelectorAll(
+    ".c-virtual_list__scroll_container > .c-virtual_list__item"
+  );
+  let mostRecentRoot;
+  let lastRootWithNewItems;
+  let isHiding = false;
+  for (let thread of threads) {
+    if (isHiding) {
+      showSidebarItem(thread, false);
+      continue;
+    }
+
+    showSidebarItem(thread, true);
+
+    if (thread.id.startsWith("threads_view_root-")) {
+      mostRecentRoot = thread;
+      continue;
+    }
+
+    if (thread.id.startsWith("threads_view_footer-")) {
+      if (lastRootWithNewItems !== mostRecentRoot) {
+        isHiding = true;
+        showSidebarItem(mostRecentRoot, false);
+        const previous = mostRecentRoot.previousSibling;
+        // If the mostRecentRoot is the first one in this heading, hide the
+        // heading as well. Null check becuase virtualization can cause the
+        // first root to not have a previous sibling.
+        if (previous && previous.id.startsWith("threads_view_heading-")) {
+          showSidebarItem(previous, false);
+        }
+      }
+      mostRecentRoot = null;
+      continue;
+    }
+
+    if (mostRecentRoot && thread.id.startsWith("threads_view_divider-")) {
+      lastRootWithNewItems = mostRecentRoot;
+    }
+  }
+
+  if (!lastRootWithNewItems) {
+    threads.forEach((x) => showSidebarItem(x, false));
+  }
+}
+
+let threadsViewChangeDebounceId;
+function handleThreadsViewChanges() {
+  if (threadsViewChangeDebounceId) {
+    clearTimeout(threadsViewChangeDebounceId);
+  }
+  threadsViewChangeDebounceId = setTimeout(updateThreadsViewItemDisplay, 0);
+}
+
+async function handleNewViewHeaderTitle(title) {
+  savedViewHeaderTitle = title;
+
+  if (title === "Threads") {
+    threadsViewObserver = new MutationObserver(handleThreadsViewChanges);
+    threadsViewObserver.observe(getThreadsView(), {
+      childList: true,
+      subtree: true,
+    });
+    handleThreadsViewChanges();
+  } else if (threadsViewObserver) {
+    threadsViewObserver.disconnect();
+    threadsViewObserver = null;
+  }
+}
+
+async function observeViewHeaderTitleChanges() {
+  await observe(getViewHeaderTitle, () => {
+    const newTitle = getViewHeaderTitle().textContent;
+    if (newTitle !== savedViewHeaderTitle) {
+      handleNewViewHeaderTitle(newTitle);
+    }
+  });
+  handleNewViewHeaderTitle(getViewHeaderTitle().textContent);
+}
+
 window.addEventListener("load", () => {
   observeFaviconChanges();
   observeChannelSidebarListChanges();
+  observeViewHeaderTitleChanges();
   document.querySelector(".p-top_nav__sidebar").before(toggleButton);
 });
