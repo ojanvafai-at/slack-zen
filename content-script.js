@@ -147,6 +147,29 @@ function updateEmptySectionDisplay() {
   observeParent(channelSidebarMutationObserver, channelSidebarList());
 }
 
+function isDMRead(dm) {
+  return !dm.querySelector(".p-recent_page__item--unread");
+}
+
+function updateAllDMsDisplay() {
+  // Disconnect since this functin will modify the subtree when changing visibility.
+  channelSidebarMutationObserver.disconnect();
+
+  const dms = getThreadsView().querySelector(
+    ".c-virtual_list__scroll_container"
+  ).children;
+  for (let dm of dms) {
+    if (isDMRead(dm)) {
+      dm.classList.add(hideThreadItemClassName);
+    } else {
+      dm.classList.remove(hideThreadItemClassName);
+    }
+  }
+
+  // Reconnect to observe future changes.
+  observeParent(channelSidebarMutationObserver, channelSidebarList());
+}
+
 async function observeChannelSidebarListChanges() {
   channelSidebarMutationObserver = await observe(
     channelSidebarList,
@@ -178,19 +201,23 @@ let savedViewHeaderTitle;
 let threadsViewObserver;
 
 function getThreadsView() {
-  return document.querySelector("#threads_view");
+  return document.querySelector(
+    savedViewHeaderTitle === threadsHeaderTitle
+      ? "#threads_view"
+      : ".p-recent_page__list"
+  );
 }
 
 function getViewHeaderTitle() {
   return document.querySelector(".p-ia__view_header");
 }
 
-const hideThisAndFollowingClassName = "hide-thread-item";
+const hideThreadItemClassName = "hide-thread-item";
 function showSidebarItem(item, shouldShow) {
   if (shouldShow) {
-    item.classList.remove(hideThisAndFollowingClassName);
+    item.classList.remove(hideThreadItemClassName);
   } else {
-    item.classList.add(hideThisAndFollowingClassName);
+    item.classList.add(hideThreadItemClassName);
   }
 }
 
@@ -245,13 +272,22 @@ function handleThreadsViewChanges() {
   if (threadsViewChangeDebounceId) {
     clearTimeout(threadsViewChangeDebounceId);
   }
-  threadsViewChangeDebounceId = setTimeout(updateThreadsViewItemDisplay, 100);
+  threadsViewChangeDebounceId = setTimeout(() => {
+    if (savedViewHeaderTitle === threadsHeaderTitle) {
+      updateThreadsViewItemDisplay();
+    } else {
+      updateAllDMsDisplay();
+    }
+  }, 100);
 }
+
+const threadsHeaderTitle = "Threads";
+const allDMsHeaderTitle = "All direct messages";
 
 async function handleNewViewHeaderTitle(title) {
   savedViewHeaderTitle = title;
 
-  if (title === "Threads") {
+  if (title === threadsHeaderTitle || title === allDMsHeaderTitle) {
     threadsViewObserver = new MutationObserver(handleThreadsViewChanges);
     threadsViewObserver.observe(getThreadsView(), {
       childList: true,
