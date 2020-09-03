@@ -1,18 +1,13 @@
 const className = "hide-sidebar";
 const hideSidebarButtonNameClassName = "hide-sidebar-item";
 const alwaysBlurClassName = "always-blur";
-// Don't hide the sidebar immediately on blur if the user goes away and comes
-// back quickly.
-const hideDelayMs = 1000 * 60 * 15;
-let delayTimeout;
-let windowFocused;
 let channelSidebarMutationObserver;
 
 const toggleButton = document.createElement("button");
 toggleButton.classList.add("hide-sidebar-toggle-button");
 toggleButton.addEventListener("click", toggleSidebar);
 
-let isFocusMode = true;
+let isFocusMode;
 
 function show(shouldShow) {
   isFocusMode = !shouldShow;
@@ -25,18 +20,7 @@ function show(shouldShow) {
     classList.add(className);
   }
 }
-show(false);
-
-function hideAfterDelayIfStillVisible() {
-  if (delayTimeout) {
-    clearTimeout(delayTimeout);
-  }
-  delayTimeout = setTimeout(() => {
-    if (!windowFocused || document.visibilityState !== "visible") {
-      show(false);
-    }
-  }, hideDelayMs);
-}
+show(true);
 
 function toggleSidebar() {
   const shouldShow = document.documentElement.classList.contains(className);
@@ -61,13 +45,6 @@ function isChannelSidebarSection(element) {
 function channelName(section) {
   return section.querySelector(".p-channel_sidebar__name");
 }
-
-window.addEventListener("visibilitychange", hideAfterDelayIfStillVisible);
-window.addEventListener("blur", () => {
-  windowFocused = false;
-  hideAfterDelayIfStillVisible();
-});
-window.addEventListener("focus", () => (windowFocused = true));
 
 function timeout(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
